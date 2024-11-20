@@ -129,9 +129,6 @@ class ShotSegmentation:
 
 
 
-shot_frames.append(None)
-print(shot_frames)
-
 def extract_frame_ranges(video_path, frame_ranges, output_dir=None, output_prefix='segment'):
     """
     Extract and save video segments based on specified frame ranges.
@@ -210,8 +207,6 @@ def extract_frame_ranges(video_path, frame_ranges, output_dir=None, output_prefi
     cap.release()
 
     return output_videos
-
-extract_frame_ranges("./movie.mp4", shot_frames)
 
 def main():
     video_path = "./movie.mp4"
