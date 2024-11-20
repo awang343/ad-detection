@@ -208,15 +208,11 @@ def extract_frame_ranges(video_path, frame_ranges, output_dir=None, output_prefi
 
     return output_videos
 
-def main():
-    video_path = "./movie.mp4"
-    export_path = "./extracted_segments"
+def main(video_path="./movie.mp4", export_path="./extracted_segments"):
     segmenter = ShotSegmentation(threshold=0.3, min_scene_len=10)
     shot_frames = segmenter.segment_shots(video_path)
     extracted_videos = extract_frame_ranges(video_path, shot_frames, output_dir=export_path)
     print(f"Extracted video segments: {extracted_videos}")
 
 if __name__ == "__main__":
-    print(sys.argv)
-    print('Hello World!')
-    #main()
+    main(sys.argv[1], sys.argv[2] if len(sys.argv)>2 else None)
