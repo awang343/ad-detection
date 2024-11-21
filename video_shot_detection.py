@@ -27,6 +27,7 @@ class ShotSegmentation:
         self.threshold = threshold
         self.min_scene_len = min_scene_len
 
+# Histogram diff {{{
     def histogram_diff(self, frame1: np.ndarray, frame2: np.ndarray) -> float:
         """
         Calculate color histogram difference between two frames using
@@ -52,8 +53,8 @@ class ShotSegmentation:
         cv2.normalize(hist2, hist2)
 
         # Calculate Bhattacharyya distance
-        return cv2.compareHist(hist1, hist2, cv2.HISTCMP_BHATTACHARYYA)
-
+        return cv2.compareHist(hist1, hist2, cv2.HISTCMP_BHATTACHARYYA)# }}}
+# Segment Shots {{{ 
     def segment_shots(self, video_path: str) -> List[int]:
         """
         Perform shot segmentation on a video file.
@@ -99,8 +100,8 @@ class ShotSegmentation:
         # Release video capture
         cap.release()
 
-        return shot_frames
-
+        return shot_frames# }}}
+# {{{ Visualize Shots
     @staticmethod
     def visualize_shots(video_path: str, shot_frames: List[int]) -> None:
         """
@@ -125,94 +126,96 @@ class ShotSegmentation:
                 # Save key frame
                 cv2.imwrite(f'shot_keyframes/shot_{idx}_frame_{shot_frame}.jpg', frame)
 
+        cap.release()# }}}
+# {{{ Extract frame ranges
+    def extract_frame_ranges(self, video_path, frame_ranges, output_dir=None, output_prefix='segment'):
+        """
+        Extract and save video segments based on specified frame ranges.
+
+        :param video_path: Path to the input video file
+        :param frame_ranges: List of frame indices defining the ranges to extract
+                             Last element can be None to extract till the end of video
+        :param output_dir: Directory to save extracted video segments
+                           (creates directory if it doesn't exist)
+        :param output_prefix: Prefix for output video files
+        :return: List of paths to extracted video segments
+        """
+        # Create output directory if not exists
+        if output_dir is None:
+            output_dir = os.path.join(os.path.dirname(video_path), 'extracted_segments')
+
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Open the video capture
+        cap = cv2.VideoCapture(video_path)
+
+        # Get total number of frames and video properties
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # Replace None with total frames if it's the last element
+        processed_ranges = frame_ranges.copy()
+        if processed_ranges[-1] is None:
+            processed_ranges[-1] = total_frames
+
+        # Sorted frame ranges to ensure correct processing
+        sorted_ranges = sorted(processed_ranges)
+
+        # List to store output video paths
+        output_videos = []
+
+        # Process each range
+        for i in range(len(sorted_ranges) - 1):
+            start_frame = sorted_ranges[i]
+            end_frame = sorted_ranges[i+1]
+
+            # Validate frame ranges
+            if start_frame >= end_frame:
+                print(f"Skipping invalid range: {start_frame} to {end_frame}")
+                continue
+
+            # Output video writer
+            output_filename = f'shot_{output_prefix}_{i:06d}.mp4'
+            output_path = os.path.join(output_dir, output_filename)
+
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+            # Reset video capture to the start frame
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+            # Read and write frames for this segment
+            current_frame = start_frame
+            while current_frame < end_frame:
+                ret, frame = cap.read()
+
+                if not ret:
+                    break
+
+                out.write(frame)
+                current_frame += 1
+
+            # Release the writer for this segment
+            out.release()
+            output_videos.append(output_path)
+
+        # Release the video capture
         cap.release()
 
+        return output_videos# }}}
 
-
-def extract_frame_ranges(video_path, frame_ranges, output_dir=None, output_prefix='segment'):
-    """
-    Extract and save video segments based on specified frame ranges.
-
-    :param video_path: Path to the input video file
-    :param frame_ranges: List of frame indices defining the ranges to extract
-                         Last element can be None to extract till the end of video
-    :param output_dir: Directory to save extracted video segments
-                       (creates directory if it doesn't exist)
-    :param output_prefix: Prefix for output video files
-    :return: List of paths to extracted video segments
-    """
-    # Create output directory if not exists
-    if output_dir is None:
-        output_dir = os.path.join(os.path.dirname(video_path), 'extracted_segments')
-
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Open the video capture
-    cap = cv2.VideoCapture(video_path)
-
-    # Get total number of frames and video properties
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    # Replace None with total frames if it's the last element
-    processed_ranges = frame_ranges.copy()
-    if processed_ranges[-1] is None:
-        processed_ranges[-1] = total_frames
-
-    # Sorted frame ranges to ensure correct processing
-    sorted_ranges = sorted(processed_ranges)
-
-    # List to store output video paths
-    output_videos = []
-
-    # Process each range
-    for i in range(len(sorted_ranges) - 1):
-        start_frame = sorted_ranges[i]
-        end_frame = sorted_ranges[i+1]
-
-        # Validate frame ranges
-        if start_frame >= end_frame:
-            print(f"Skipping invalid range: {start_frame} to {end_frame}")
-            continue
-
-        # Output video writer
-        output_filename = f'shot_{output_prefix}_{i:06d}.mp4'
-        output_path = os.path.join(output_dir, output_filename)
-
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-
-        # Reset video capture to the start frame
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-
-        # Read and write frames for this segment
-        current_frame = start_frame
-        while current_frame < end_frame:
-            ret, frame = cap.read()
-
-            if not ret:
-                break
-
-            out.write(frame)
-            current_frame += 1
-
-        # Release the writer for this segment
-        out.release()
-        output_videos.append(output_path)
-
-    # Release the video capture
-    cap.release()
-
-    return output_videos
+    def __call__(self, video_path, export_path):
+        shot_frames = self.segment_shots(video_path)
+        extracted_videos = self.extract_frame_ranges(video_path, shot_frames, output_dir=export_path)
+        return extracted_videos
+        
 
 def main(video_path="./movie.mp4", export_path="./extracted_segments"):
     segmenter = ShotSegmentation(threshold=0.3, min_scene_len=10)
-    shot_frames = segmenter.segment_shots(video_path)
-    extracted_videos = extract_frame_ranges(video_path, shot_frames, output_dir=export_path)
-    print(f"Extracted video segments: {extracted_videos}")
+    segmenter(video_path, export_path)
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2] if len(sys.argv)>2 else None)
