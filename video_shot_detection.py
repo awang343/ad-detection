@@ -213,6 +213,7 @@ class ShotSegmentation:
         return extracted_videos
         
 
+
 def main(video_path="./movie.mp4", export_path="./extracted_segments"):
     segmenter = ShotSegmentation(threshold=0.3, min_scene_len=10)
     segmenter(video_path, export_path)

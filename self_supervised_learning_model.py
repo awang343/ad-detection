@@ -255,30 +255,6 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 import json
-import logging
-
-def set_seed(seed):
-    """Set all random seeds for reproducibility"""
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed(seed)
-        torch.cuda.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-
-def setup_logging(save_dir):
-    """Setup logging configuration"""
-    log_file = save_dir / 'training.log'
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
 
 def save_config(config, save_dir):
     """Save training configuration"""
@@ -287,44 +263,30 @@ def save_config(config, save_dir):
         json.dump(config, f, indent=4)
 
 def main():
-    # ============ Training Configuration ============
     config = {
-        # Data parameters
-        'data_dir': './AllMovies',  # Change this to your data directory
+        'data_dir': './AllMovies',
         'save_dir': './experiments',
 
-        # Training parameters
         'epochs': 5,
         'batch_size': 32,
         'learning_rate': 3e-4,
 
-        # MoCo parameters
         'queue_size': 65536,
         'moco_dim': 128,
         'moco_momentum': 0.999,
         'temperature': 0.07,
 
-        # Other parameters
-        'seed': 42,
-        'checkpoint_path': None,  # Set to checkpoint path to resume training
+        'checkpoint_path': None
     }
 
-    # Set random seed
-    set_seed(config['seed'])
-
-    # Create save directory with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     save_dir = Path(config['save_dir']) / timestamp
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # Setup logging
-    setup_logging(save_dir)
-    logging.info(f"Configuration: {config}")
+    print(f"Configuration: {config}")
 
-    # Save configuration
     save_config(config, save_dir)
 
-    # Initialize model
     model = SceneBoundaryMoCo(
         K=config['queue_size'],
         m=config['moco_momentum'],
@@ -333,7 +295,6 @@ def main():
         batch_size=config['batch_size']
     )
 
-    # Load checkpoint if provided
     start_epoch = 0
     if config['checkpoint_path']:
         checkpoint = torch.load(config['checkpoint_path'])
@@ -342,52 +303,41 @@ def main():
         model.queue = checkpoint['queue']
         model.queue_ptr = checkpoint['queue_ptr']
         start_epoch = checkpoint['epoch'] + 1
-        logging.info(f"Resumed from checkpoint: {config['checkpoint_path']}")
+        print(f"Resumed from checkpoint: {config['checkpoint_path']}")
 
-    # Training loop with checkpointing
-    try:
-        for epoch in range(start_epoch, config['epochs']):
-            logging.info(f"Starting epoch {epoch + 1}/{config['epochs']}")
+    for epoch in range(start_epoch, config['epochs']):
+        print(f"Starting epoch {epoch + 1}/{config['epochs']}")
 
-            model.train(
-                train_dir=config['data_dir'],
-                num_epochs=1,  # Run one epoch at a time
-                lr=config['learning_rate']
-            )
+        model.train(
+            train_dir=config['data_dir'],
+            num_epochs=1,
+            lr=config['learning_rate']
+        )
 
-            # Save checkpoint
-            checkpoint = {
-                'epoch': epoch,
-                'encoder_q': model.encoder_q.state_dict(),
-                'encoder_k': model.encoder_k.state_dict(),
-                'queue': model.queue,
-                'queue_ptr': model.queue_ptr
-            }
-
-            # Save latest checkpoint
-            latest_path = save_dir / 'checkpoint_latest.pth'
-            torch.save(checkpoint, latest_path)
-
-            # Save periodic checkpoint every 10 epochs
-            if (epoch + 1) % 10 == 0:
-                checkpoint_path = save_dir / f'checkpoint_epoch_{epoch+1}.pth'
-                torch.save(checkpoint, checkpoint_path)
-                logging.info(f"Saved checkpoint: {checkpoint_path}")
-
-    except KeyboardInterrupt:
-        logging.info("Training interrupted by user")
-    except Exception as e:
-        logging.error(f"Error occurred: {str(e)}", exc_info=True)
-    finally:
-        # Save final model
-        final_path = save_dir / 'model_final.pth'
-        torch.save({
+        checkpoint = {
+            'epoch': epoch,
             'encoder_q': model.encoder_q.state_dict(),
             'encoder_k': model.encoder_k.state_dict(),
             'queue': model.queue,
             'queue_ptr': model.queue_ptr
-        }, final_path)
-        logging.info(f"Saved final model: {final_path}")
+        }
+
+        latest_path = save_dir / 'checkpoint_latest.pth'
+        torch.save(checkpoint, latest_path)
+
+        if (epoch + 1) % 10 == 0:
+            checkpoint_path = save_dir / f'checkpoint_epoch_{epoch+1}.pth'
+            torch.save(checkpoint, checkpoint_path)
+            print(f"Saved checkpoint: {checkpoint_path}")
+
+    final_path = save_dir / 'model_final.pth'
+    torch.save({
+        'encoder_q': model.encoder_q.state_dict(),
+        'encoder_k': model.encoder_k.state_dict(),
+        'queue': model.queue,
+        'queue_ptr': model.queue_ptr
+    }, final_path)
+    print(f"Saved final model: {final_path}")
 
 if __name__ == '__main__':
     main()
