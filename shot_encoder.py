@@ -1,0 +1,29 @@
+import numpy as np
+
+import torch
+import torch.nn as nn
+import torchvision.models as models
+import torch.nn.functional as F
+
+class ShotEncoder(nn.Module):
+    def __init__(self, output_dim=128, use_projection=True):
+        super().__init__()
+        resnet = models.resnet50(weights="ResNet50_Weights.DEFAULT")
+        for param in resnet.parameters():
+            param.requires_grad = True
+        self.encoder = nn.Sequential(*list(resnet.children())[:-1])
+
+        if use_projection:
+            self.projector = nn.Sequential(
+                nn.Linear(2048, 2048),
+                nn.ReLU(),
+                nn.Linear(2048, output_dim)
+            )
+        else:
+            self.projector = nn.Identity()
+
+    def forward(self, x):
+        h = self.encoder(x)
+        h = h.view(h.size(0), -1)
+        z = self.projector(h)
+        return F.normalize(z, dim=1)# }}}
