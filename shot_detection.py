@@ -24,7 +24,7 @@ class ShotSegmentation:
         return cv2.compareHist(hist1, hist2, cv2.HISTCMP_BHATTACHARYYA)# }}}
 # Segment Shots {{{ 
     def segment_shots(self, video_path: str, frame_div: int) -> List[int]:
-        cap = cv2.VideoCapture(video_path)
+        cap = cv2.VideoCapture(video_path, cv2.CAP_FFMPEG)
         if not cap.isOpened():
             raise ValueError(f"Could not open video file: {video_path}")
 
