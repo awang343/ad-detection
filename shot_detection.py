@@ -128,17 +128,23 @@ def main():
         folder = movie.replace(".mp4", "/")
         if movie.replace(".mp4", "") not in os.listdir(movie_output):
             os.makedirs(movie_output + folder)
-        # else:
-        #     continue
-        segmenter(movie_dir + movie, movie_output+folder)
+            try:
+                segmenter(movie_dir + movie, movie_output+folder)
+            except Exception as e:
+                shutil.rmtree(movie_output + folder)
+                print(f'Failed to parse movie - {movie_dir + movie}')
 
     for ad in os.listdir(ads_dir):
         folder = ad.replace(".mp4", "/")
         if ad.replace(".mp4", "") not in os.listdir(ads_output):
             os.makedirs(ads_output + folder)
-        # else:
-        #     continue
-        segmenter(ads_dir + ad, ads_output+folder)
+            try:
+                segmenter(ads_dir + ad, ads_output+folder)
+            except Exception as e:
+                shutil.rmtree(ads_output + folder)
+                print(f'Failed to parse ad - {ads_dir + ad}')
+
+        
 
 if __name__ == "__main__":
     main()
