@@ -124,6 +124,14 @@ def main():
     #     os.makedirs(movie_output + folder)
     #     segmenter(movie_dir + movie, movie_output+folder)
 
+    for movie in os.listdir(movie_dir):
+        folder = movie.replace(".mp4", "/")
+        if movie.replace(".mp4", "") not in os.listdir(movie_output):
+            os.makedirs(movie_output + folder)
+        # else:
+        #     continue
+        segmenter(movie_dir + movie, movie_output+folder)
+
     for ad in os.listdir(ads_dir):
         folder = ad.replace(".mp4", "/")
         if ad.replace(".mp4", "") not in os.listdir(ads_output):
