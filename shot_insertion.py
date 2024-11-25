@@ -96,7 +96,7 @@ def load_npy_files(directory):
 def insert_tuples(enc_movie_list_of_tuples, enc_ads_list_of_tuples):
     """Inserts tuples from enc_ads_list_of_tuples into enc_movie_list_of_tuples at random locations."""
 
-    insert_index = random.randint(0, len(enc_movie_list_of_tuples))
+    insert_index = random.randint(int(0.3*len(enc_movie_list_of_tuples)), len(enc_movie_list_of_tuples))
     for ad_tuple in enc_ads_list_of_tuples:
         enc_movie_list_of_tuples.insert(insert_index, ad_tuple)
         insert_index = insert_index + 1
@@ -105,10 +105,10 @@ def insert_tuples(enc_movie_list_of_tuples, enc_ads_list_of_tuples):
 
 def main():
     movie_avg_shots = load_npy_files(
-        "/content/Inference_Preprocessing/Movie_1/extracted_segments_movies_avg"
+        "./data/movies/The.Godfather"
     )
     ads_avg_shots = load_npy_files(
-        "/content/Inference_Preprocessing/Movie_1/extracted_segments_ads_avg"
+        "./data/ads/temu"
     )
 
     # movie_avg_shots = make_proper_shape(extracted_segments_movies_avg_np_array)
@@ -117,8 +117,8 @@ def main():
     movie_avg_shots_tensor = torch.tensor(movie_avg_shots, dtype=torch.float32)
     ads_avg_shots_tensor = torch.tensor(ads_avg_shots, dtype=torch.float32)
 
-    movie_avg_shots_tensor = movie_avg_shots_tensor.permute(0, 3, 1, 2)
-    ads_avg_shots_tensor = ads_avg_shots_tensor.permute(0, 3, 1, 2)
+    # movie_avg_shots_tensor = movie_avg_shots_tensor.permute(0, 3, 1, 2)
+    # ads_avg_shots_tensor = ads_avg_shots_tensor.permute(0, 3, 1, 2)
 
     enc = ShotEncoder()
 

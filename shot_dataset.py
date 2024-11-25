@@ -9,9 +9,12 @@ import cv2
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+import torch
+
+from shot_encoder import ShotEncoder
 
 class ShotDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, transform=None, is_ad=False):
         self.root_dir = Path(root_dir)
         self.transform = transform or transforms.Compose([
             transforms.ToPILImage(),
@@ -21,15 +24,19 @@ class ShotDataset(Dataset):
                                std=[0.229, 0.224, 0.225])
         ])
 
-        self.shots = defaultdict(list)
-        for movie_dir in self.root_dir.glob("Movie_*"):
-            movie_id = movie_dir.name
-            shots = sorted(list(movie_dir.glob("shot_segment_*.mp4")),
-                         key=lambda x: int(x.stem.split('_')[2]))
-            self.shots[movie_id] = shots
+        self.default_encoder = ShotEncoder()
+        self.is_ad = is_ad
 
-        self.all_shots = [(movie_id, shot_path)
-                         for movie_id, shots in self.shots.items()
+        self.shots = defaultdict(list)
+        for video_dir in self.root_dir.iterdir():
+            print(video_dir)
+            video_id = video_dir.name
+            shots = sorted(list(video_dir.glob("shot_segment_*.mp4")),
+                         key=lambda x: int(x.stem.split('_')[2]))
+            self.shots[video_id] = shots
+
+        self.all_shots = [(video_id, shot_path)
+                         for video_id, shots in self.shots.items()
                          for shot_path in shots]
 
     def _load_video_frame(self, video_path, save_path):
@@ -67,14 +74,27 @@ class ShotDataset(Dataset):
         return movie_shots[start_idx:end_idx]
 
     def __getitem__(self, idx):
-        movie_id, anchor_path = self.all_shots[idx]
-
-        temporal_neighbors = self._get_temporal_neighbors(movie_id, anchor_path)
+        video_id, anchor_path = self.all_shots[idx]
 
         anchor_frame = self._load_video_frame(anchor_path, os.path.dirname(anchor_path))
+        if self.is_ad:
+            return anchor_frame
+
+        temporal_neighbors = self._get_temporal_neighbors(video_id, anchor_path)
         temporal_frames = [self._load_video_frame(f, os.path.dirname(f)) for f in temporal_neighbors if f != anchor_path]
 
-        return anchor_frame, temporal_frames
+        best_dist = np.inf
+        key_frame = None
+
+        q_enc = self.default_encoder(torch.tensor(np.expand_dims(anchor_frame, 0)))
+        for im in temporal_frames:
+            with torch.no_grad():
+                im_enc = self.default_encoder(torch.tensor(np.expand_dims(im, 0)))
+                dist = torch.dot(im_enc[0], q_enc[0])
+                if dist < best_dist:
+                    best_dist, key_frame = dist, im
+
+        return anchor_frame, temporal_frames[0]
 
     def __len__(self):
         return len(self.all_shots)

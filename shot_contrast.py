@@ -8,7 +8,6 @@ import torch.nn as nn
 import torchvision.models as models
 import torch.nn.functional as F
 
-from torch.utils.data import Dataset, DataLoader
 from shot_dataset import ShotDataset
 from shot_encoder import ShotEncoder
 
@@ -66,19 +65,14 @@ class SceneBoundaryMoCo(nn.Module):
 
         self.queue_ptr[0] = ptr
 
-    def forward(self, im_q, im_k):
+    def forward(self, im_q, im_k, im_ad):
         """Forward pass - required for nn.Module"""
         q = self.encoder_q(im_q)
+        k = self.encoder_k(im_k)
+
+        a = self.encoder_k(im_ad)
 
         best_dist = np.inf
-        k = None
-
-        for im in im_k:
-            with torch.no_grad():
-                k_im = self.encoder_k(im)
-                dist = torch.dot(k_im[0], q[0])
-                if dist < best_dist:
-                    best_dist, k = dist, k_im
 
         l_pos = torch.einsum('nc,nc->n', [q, k]).unsqueeze(-1)
         l_neg = torch.einsum('nc,ck->nk', [q, self.queue.clone().detach()])
@@ -87,29 +81,38 @@ class SceneBoundaryMoCo(nn.Module):
 
         logits /= self.T
 
-        self._dequeue_and_enqueue(k)
+        self._dequeue_and_enqueue(a)
 
         return logits
 
-    def training_step(self, batch):
+    def training_step(self, batch, ad):
         """Single training step with MoCo"""
-        im_q = batch[0].to(self.device)
-        im_k = [b.to(self.device) for b in batch[1]]
+        im_q, im_k = [b.to(self.device) for b in batch]
+        im_a = ad.to(self.device)
 
-        logits = self(im_q, im_k)
+        logits = self(im_q, im_k, im_a)
         labels = torch.zeros(logits.shape[0], dtype=torch.long).to(self.device)
+        labels[0] = 1
 
         loss = F.cross_entropy(logits, labels)
         return loss
 
-    def train_epoch(self, train_loader, optimizer):
+    def train(self, movie_loader, ad_loader, optimizer):
         """Train for one epoch"""
         total_loss = 0
         n_batches = 0
 
-        for batch in train_loader:
+        ad_iter = iter(ad_loader)
+
+        for batch in movie_loader:
             optimizer.zero_grad()
-            loss = self.training_step(batch)
+
+            ad = next(ad_iter, "eod")
+            if ad == "eod":
+                ad_iter = iter(ad_loader)
+                ad = next(ad_iter)
+
+            loss = self.training_step(batch, ad)
             print(f"Batch {n_batches}", f"Loss: {loss}")
             loss.backward()
             optimizer.step()
@@ -119,35 +122,28 @@ class SceneBoundaryMoCo(nn.Module):
             total_loss += loss.item()
             n_batches += 1
 
-        self.register_buffer("queue", torch.randn(output_dim, K))
-        self.queue = F.normalize(self.queue, dim=0)
-
-        self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
-
         return total_loss / n_batches
 
-    def train(self, train_dir, num_epochs=100, lr=3e-4):
-        """Training loop"""
-        dataset = ShotDataset(train_dir)
-        dataloader = DataLoader(
-            dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=0,
-            pin_memory=True
-        )
-
-        optimizer = torch.optim.Adam(self.encoder_q.parameters(), lr=lr)
-
-        for epoch in range(num_epochs):
-            avg_loss = self.train_epoch(dataloader, optimizer)
-            print(f"Epoch {epoch+1}/{num_epochs}, Loss: {avg_loss:.4f}")
-
-    def save_model(self, path):
+    def save_model(self, epoch, path):
         """Save query encoder"""
-        torch.save(self.encoder_q.state_dict(), path)
+        torch.save({
+            'epoch': epoch,
+            'encoder_q': self.encoder_q.state_dict(),
+            'encoder_k': self.encoder_k.state_dict(),
+            'queue': self.queue,
+            'queue_ptr': self.queue_ptr
+        }, path)
+        print(f"Saved checkpoint: {path}")
 
     def load_model(self, path):
-        """Load query encoder"""
-        self.encoder_q.load_state_dict(torch.load(path))
+        """Load query encoder, returns epoch"""
+        checkpoint = torch.load(path)
+
+        self.encoder_q.load_state_dict(checkpoint['encoder_q'])
+        self.encoder_k.load_state_dict(checkpoint['encoder_k'])
+        self.queue = checkpoint['queue']
+        self.queue_ptr = checkpoint['queue_ptr']
+        print(f"Resumed from checkpoint: {config['checkpoint_path']}")
+
+        return checkpoint['epoch']
 
