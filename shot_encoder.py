@@ -9,8 +9,10 @@ class ShotEncoder(nn.Module):
     def __init__(self, output_dim=128, use_projection=True):
         super().__init__()
         resnet = models.resnet50(weights="ResNet50_Weights.DEFAULT")
-        for param in resnet.parameters():
+
+        for name, param in resnet.named_parameters():
             param.requires_grad = True
+
         self.encoder = nn.Sequential(*list(resnet.children())[:-1])
 
         if use_projection:
@@ -21,6 +23,9 @@ class ShotEncoder(nn.Module):
             )
         else:
             self.projector = nn.Identity()
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
 
     def forward(self, x):
         h = self.encoder(x)

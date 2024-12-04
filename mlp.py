@@ -11,28 +11,14 @@ import torch.nn.functional as F
 from shot_dataset import ShotDataset
 from shot_encoder import ShotEncoder
 
-class SceneBoundaryMoCo(nn.Module):
+class MLP(nn.Module):
     def __init__(self,
-                 K=4096,  # queue size
-                 m=0.999,  # momentum
-                 T=0.07,   # temperature
                  output_dim=128,
                  batch_size=32):
-        super(SceneBoundaryMoCo, self).__init__()
+        super().__init__()
 
-        self.K = K
-        self.m = m
-        self.T = T
         self.batch_size = batch_size
-
         self.encoder_q = ShotEncoder(output_dim=output_dim)
-        self.encoder_k = ShotEncoder(output_dim=output_dim)
-
-        # Make sure the weights are the same initially
-        for param_q, param_k in zip(self.encoder_q.parameters(),
-                                  self.encoder_k.parameters()):
-            param_k.data.copy_(param_q.data)
-            param_k.requires_grad = False
 
         self.register_buffer("queue", torch.randn(output_dim, K))
         self.queue = F.normalize(self.queue, dim=0)

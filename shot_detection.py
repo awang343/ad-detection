@@ -106,30 +106,19 @@ class ShotSegmentation:
         return extracted_videos
 
 def main():
-    data_dir = "data/"
-
-    movie_dir = data_dir + "movies-raw/"
-    ads_dir = data_dir + "ads-raw/"
-
-    movie_output = data_dir + "movies/"
-    ads_output = data_dir + "ads/"
+    movie_dir = "data/movies-raw/"
+    ads_dir = "data/ads-raw/"
+    movie_output = "data/movies/"
+    ads_output = "data/ads/"
 
     segmenter = ShotSegmentation(threshold=0.3, min_scene_len=10)
-
-    # for movie in os.listdir(movie_dir):
-    #     print(movie)
-    #     folder = movie.replace(".mp4", "/")
-    #     if movie.replace(".mp4", "") in os.listdir(movie_output):
-    #         continue
-    #     os.makedirs(movie_output + folder)
-    #     segmenter(movie_dir + movie, movie_output+folder)
 
     for ad in os.listdir(ads_dir):
         folder = ad.replace(".mp4", "/")
         if ad.replace(".mp4", "") not in os.listdir(ads_output):
             os.makedirs(ads_output + folder)
-        # else:
-        #     continue
+        else:
+            continue
         segmenter(ads_dir + ad, ads_output+folder)
 
 if __name__ == "__main__":

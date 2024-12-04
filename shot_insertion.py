@@ -21,7 +21,6 @@ def save_array_tuples(arr, filename):
     arr: List of tuples where each tuple is (label, numpy_array)
     filename: Output CSV filename
     """
-    # Convert the data into a format suitable for DataFrame
     data = {
         "label": [t[0] for t in arr],
         "array": [",".join(map(str, t[1])) for t in arr],
@@ -81,18 +80,6 @@ def load_npy_files(directory):
         print(f"An error occurred: {e}")
         return None
 
-# def make_proper_shape(avg_shots):
-#     target_size = (224, 224)
-#     resized_avg_shots = []
-
-#     for i in range(avg_shots.shape[0]):
-#         img = avg_shots[i]
-#         img = cv2.resize(img, target_size)
-#         resized_avg_shots.append(img)
-
-#     movie_avg_shots = np.array(resized_avg_shots)
-#     return movie_avg_shots
-
 def insert_tuples(enc_movie_list_of_tuples, enc_ads_list_of_tuples):
     """Inserts tuples from enc_ads_list_of_tuples into enc_movie_list_of_tuples at random locations."""
 
@@ -111,14 +98,8 @@ def main():
         "./data/ads/temu"
     )
 
-    # movie_avg_shots = make_proper_shape(extracted_segments_movies_avg_np_array)
-    # ads_avg_shots = make_proper_shape(extracted_segments_ads_avg_np_array)
-
     movie_avg_shots_tensor = torch.tensor(movie_avg_shots, dtype=torch.float32)
     ads_avg_shots_tensor = torch.tensor(ads_avg_shots, dtype=torch.float32)
-
-    # movie_avg_shots_tensor = movie_avg_shots_tensor.permute(0, 3, 1, 2)
-    # ads_avg_shots_tensor = ads_avg_shots_tensor.permute(0, 3, 1, 2)
 
     enc = ShotEncoder()
 
