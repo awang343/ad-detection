@@ -32,3 +32,8 @@ class ShotEncoder(nn.Module):
         h = h.view(h.size(0), -1)
         z = self.projector(h)
         return F.normalize(z, dim=1)# }}}
+
+    def load_model(self, path):
+        """Load query encoder, returns epoch"""
+        checkpoint = torch.load(path, weights_only=True)
+        self.load_state_dict(checkpoint['encoder_q'])
