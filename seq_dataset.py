@@ -73,13 +73,14 @@ class SeqDataset(Dataset):
                 if len(m_shots) < self.seq_length or len(a_shots) < self.seq_length:
                     continue
 
-                for shot_num in range(len(movie_shots) - self.seq_length + 1):
+                for shot_num in range(len(m_shots) - self.seq_length + 1):
                     ad_start = a_shots[:self.seq_length]
                     ad_end = a_shots[-self.seq_length:]
                     movie_part = m_shots[shot_num:shot_num + self.seq_length]
 
-                    self.sequences.append((2, movie_part+ad_start))
-                    self.sequences.append((3, ad_end+movie_part))
+                    self.sequences.append((1, movie_part+ad_start))
+                    self.sequences.append((2, ad_end+movie_part))
+        np.save("notebooks/class_dist.npy", np.array([s[0] for s in self.sequences]))
 
     def _load_encoding(self, frame_path, encs_path):
         if frame_path.stem + ".npy" in os.listdir(encs_path):

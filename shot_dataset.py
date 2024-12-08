@@ -14,8 +14,9 @@ import torch
 from shot_encoder import ShotEncoder
 
 class ShotDataset(Dataset):
-    def __init__(self, shots_dir, transform=None, is_ad=False):
+    def __init__(self, shots_dir, window_size=5, transform=None, is_ad=False):
         self.shots_dir = Path(shots_dir)
+        self.window_size = window_size
 
         self.transform = transform or transforms.Compose([
             transforms.ToPILImage(),

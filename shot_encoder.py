@@ -6,12 +6,12 @@ import torchvision.models as models
 import torch.nn.functional as F
 
 class ShotEncoder(nn.Module):
-    def __init__(self, output_dim=128, use_projection=True):
+    def __init__(self, output_dim=128, use_projection=True, grad=True):
         super().__init__()
         resnet = models.resnet50(weights="ResNet50_Weights.DEFAULT")
 
         for name, param in resnet.named_parameters():
-            param.requires_grad = True
+            param.requires_grad = grad
 
         self.encoder = nn.Sequential(*list(resnet.children())[:-1])
 
