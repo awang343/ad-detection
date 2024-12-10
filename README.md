@@ -1,8 +1,9 @@
 # Project Outline
 
-## Shot segmentation
-- Done
+## Github Link
+https://github.com/awang343/ad-detection
 
-## Shot Col
-- Train the model on shot changes
-- Figure out which of the four classes it falls under
+## Required Dependencies
+- pytorch: 2024.4.0
+- numpy: 2.1.3
+- opencv: 4.10.0
